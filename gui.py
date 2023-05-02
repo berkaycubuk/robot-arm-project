@@ -2,31 +2,38 @@ import tkinter as tk
 from slider import Slider
 from robot import Robot
 
-class GUI:
-    process1Level = 0
-
-    def __init__(self):
-        self.window = tk.Tk()
-        self.window.geometry('500x300')
-        self.__initWidgets()
-        self.robot = Robot()
-        self.window.mainloop()
+class GUIRobotAxisSection:
+    def __init__(self, window, robot):
+        self.window = window
+        self.robot = robot
+        self.bodyRotationWidget()
+        self.heightWidget()
+        self.lengthWidget()
+        self.xWidget()
 
     def bodyRotationWidgetCallback(self, value = 0):
         self.robot.bodyRotationServo.setAngle(self.bodyRotationSlider.get())
-
-    def heightWidgetCallback(self, value=0):
-        self.robot.heightServo.setAngle(self.heightSlider.get())
 
     def bodyRotationWidget(self):
         bodyRotationSliderLabel = tk.Label(self.window, text="Body Slider").grid(column=0,row=0)
         self.bodyRotationSlider = Slider(self.window, 0, 0, 180, self.bodyRotationWidgetCallback)
         self.bodyRotationSlider.returnWidget().grid(column=1,row=0)
 
+    def heightWidgetCallback(self, value=0):
+        self.robot.heightServo.setAngle(self.heightSlider.get())
+
     def heightWidget(self):
         heightSliderLabel = tk.Label(self.window, text="Height Slider").grid(column=0,row=1)
         self.heightSlider = Slider(self.window, 40, 40, 130, self.heightWidgetCallback)
         self.heightSlider.returnWidget().grid(column=1,row=1)
+
+    def lengthWidgetCallback(self, value=0):
+        self.robot.lengthServo.setAngle(self.lengthSlider.get())
+
+    def lengthWidget(self):
+        lengthSliderLabel = tk.Label(self.window, text="Length Slider").grid(column=0,row=4)
+        self.lengthSlider = Slider(self.window, 110, 90, 180, self.lengthWidgetCallback)
+        self.lengthSlider.returnWidget().grid(column=1,row=6)
 
     def xCallback(self, value=20):
         self.robot.moveToXPosition(int(value))
@@ -36,13 +43,15 @@ class GUI:
         self.xSlider = Slider(self.window, 20, 0, 100, self.xCallback)
         self.xSlider.returnWidget().grid(column=1,row=8)
 
-    def lengthWidgetCallback(self, value=0):
-        self.robot.lengthServo.setAngle(self.lengthSlider.get())
+class GUI:
+    process1Level = 0
 
-    def lengthWidget(self):
-        lengthSliderLabel = tk.Label(self.window, text="Length Slider").grid(column=0,row=4)
-        self.lengthSlider = Slider(self.window, 110, 90, 180, self.lengthWidgetCallback)
-        self.lengthSlider.returnWidget().grid(column=1,row=6)
+    def __init__(self):
+        self.window = tk.Tk()
+        self.window.geometry('500x300')
+        self.__initWidgets()
+        self.robot = Robot()
+        self.window.mainloop()
 
     def posConveyorWidgetCallback(self, value=0):
         self.robot.moveToPosition(8, 3, 5.5)
@@ -89,17 +98,14 @@ class GUI:
         button = tk.Button(self.window, text='Process 1', command=self.process1Callback).grid(column=0,row=4)
 
     def __initWidgets(self):
-        self.bodyRotationWidget()
-        self.heightWidget()
+        robotAxisSection = GUIRobotAxisSection(self.window, self.robot)
         self.posConveyorWidget()
         self.posConveyorPickWidget()
         self.posConveyorDropWidget()
-        self.lengthWidget()
         self.moveToAreaWidget()
         self.moveToAreaDropWidget()
         self.moveToAreaPickWidget()
         self.process1Widget()
-        self.xWidget()
 
     def close(self):
         self.robot.close()
