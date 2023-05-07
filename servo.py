@@ -16,13 +16,13 @@ class Servo:
             if (diff > 0):
                 for x in range(diff):
                     self.angle -= 1
-                    time.sleep(0.05)
                     self.pwm.setRotationAngle(self.pin, self.angle)
+                    time.sleep(0.05)
             else:
                 for x in range(diff * (-1)):
                     self.angle += 1
-                    time.sleep(0.05)
                     self.pwm.setRotationAngle(self.pin, self.angle)
+                    time.sleep(0.05)
         else:
             self.pwm.setRotationAngle(self.pin, angle)
 

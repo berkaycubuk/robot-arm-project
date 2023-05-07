@@ -9,7 +9,7 @@ class GUIRobotAxisSection:
         self.bodyRotationWidget()
         self.heightWidget()
         self.lengthWidget()
-        self.xWidget()
+        #self.xWidget()
 
     def bodyRotationWidgetCallback(self, value = 0):
         self.robot.bodyRotationServo.setAngle(self.bodyRotationSlider.get())
@@ -49,8 +49,8 @@ class GUI:
     def __init__(self):
         self.window = tk.Tk()
         self.window.geometry('500x300')
-        self.__initWidgets()
         self.robot = Robot()
+        self.__initWidgets()
         self.window.mainloop()
 
     def posConveyorWidgetCallback(self, value=0):
@@ -91,14 +91,15 @@ class GUI:
         button = tk.Button(self.window, text='Pick', command=self.moveToAreaPickWidgetCallback).grid(column=2,row=3)
 
     def process1Callback(self, value=0):
-        self.robot.process1(self.process1Level)
-        self.process1Level += 1
+        self.robot.center()
+        #self.robot.process1(self.process1Level)
+        #self.process1Level += 1
 
     def process1Widget(self):
         button = tk.Button(self.window, text='Process 1', command=self.process1Callback).grid(column=0,row=4)
 
     def __initWidgets(self):
-        robotAxisSection = GUIRobotAxisSection(self.window, self.robot)
+        #robotAxisSection = GUIRobotAxisSection(self.window, self.robot)
         self.posConveyorWidget()
         self.posConveyorPickWidget()
         self.posConveyorDropWidget()

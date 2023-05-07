@@ -96,5 +96,8 @@ class Robot:
         self.conveyorPickReady()
         self.conveyorDrop()
 
+    def center(self):
+        self.moveToPosition(9.0, 0.0, 6.0)
+
     def close(self):
         self.pwm.exit_PCA9685()
