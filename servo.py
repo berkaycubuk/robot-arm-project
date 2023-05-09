@@ -1,6 +1,8 @@
 import time
 
 class Servo:
+    delay = 0.01
+
     def __init__(self, pwm, pin, initialAngle = 50):
         self.pwm = pwm
         self.pin = pin
@@ -17,12 +19,12 @@ class Servo:
                 for x in range(diff):
                     self.angle -= 1
                     self.pwm.setRotationAngle(self.pin, self.angle)
-                    time.sleep(0.05)
+                    time.sleep(self.delay)
             else:
                 for x in range(diff * (-1)):
                     self.angle += 1
                     self.pwm.setRotationAngle(self.pin, self.angle)
-                    time.sleep(0.05)
+                    time.sleep(self.delay)
         else:
             self.pwm.setRotationAngle(self.pin, angle)
 
