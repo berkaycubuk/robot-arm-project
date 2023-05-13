@@ -6,6 +6,7 @@ from PCA9685 import PCA9685
 from servo import Servo
 import math
 import time
+import numpy as np
 
 pwm = PCA9685()
 pwm.setPWMFreq(50)
@@ -170,88 +171,9 @@ video_device = cv2.VideoCapture(0)
 video_device.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 video_device.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-# def programOne():
-#     moveTo(80, 0, 80)
-# 
-# def startPosition():
-#     moveTo(80, 0, 80)
-# 
-# def closeProgram():
-#     vid.release()
-#     exit()
-# 
-# 
-# 
-# 
-# bOne = tk.Button(app, text="PROGRAM ONE", command=programOne)
-# bOne.grid(row=1, column=0)
-# 
-# bStartPosition = tk.Button(app, text="START POSITION", command=startPosition)
-# bStartPosition.grid(row=2, column=0)
-# 
-# positionFrame = tk.Frame(app)
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# positionFrame.grid(row=0, column=2)
-# 
-# def camDisplay():
-#     _, frame = vid.read()
-# 
-#     opencv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-#     captured_image = Image.fromarray(opencv_image)
-#     photo_image = ImageTk.PhotoImage(image=captured_image)
-#     label.photo_image = photo_image
-#     label.configure(image=photo_image)
-#     label.after(10, camDisplay)
-# 
-# camDisplay()
+yellow = [0, 255, 255]
+red = [255, 100, 100]
+white = [255, 255, 255]
 
 class UI(tk.Tk):
     def __init__(self):
@@ -372,6 +294,28 @@ class HomePage(tk.Frame):
     def camLoop(self):
         global video_device
         _, frame = video_device.read()
+
+        # create black rectangles for grippers to prevent from red mask
+        frame = cv2.rectangle(frame, (0, 480), (640, 380), (0, 0, 0), -1)
+        frame = cv2.rectangle(frame, (0, 0), (640, 100), (0, 0, 0), -1)
+        frame = cv2.rectangle(frame, (560, 0), (640, 480), (0, 0, 0), -1)
+
+        hsv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+        color_sensitivity = 50
+        red_lower = np.array([100 + color_sensitivity,100,100], dtype="uint8")
+        red_upper = np.array([255 - color_sensitivity,255,255], dtype="uint8")
+
+        white_lower = np.array([0,0,255 - color_sensitivity], dtype="uint8")
+        white_upper = np.array([255,color_sensitivity,255], dtype="uint8")
+
+        mask = cv2.inRange(hsv_image, red_lower, red_upper)
+
+        captured_image = Image.fromarray(mask)
+        bbox = captured_image.getbbox() 
+        if bbox is not None:
+            x1, y1, x2, y2 = bbox
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 5)
 
         opencv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
         captured_image = Image.fromarray(opencv_image)
