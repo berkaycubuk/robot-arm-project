@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Terminal=false
+Name=MyCustomProgram
+Icon=utilities-terminal
+Exec=bash -c './robot-arm/runner.sh;$SHELL'
+Categories=Application;

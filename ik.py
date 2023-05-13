@@ -8,14 +8,14 @@ pwm = PCA9685()
 pwm.setPWMFreq(50)
 
 # servos
-baseServo = Servo(pwm, 0, 75)
-leftServo = Servo(pwm, 1, 100)
-rightServo = Servo(pwm, 2, 125)
-gripperServo = Servo(pwm, 3, 160)
+baseServo = Servo(pwm, 0, 73)
+leftServo = Servo(pwm, 1, 92)
+rightServo = Servo(pwm, 2, 130)
+gripperServo = Servo(pwm, 3, 180)
 
-base_offset = 75
-left_offset = 80
-right_offset = 215 # 35
+base_offset = 73
+left_offset = 78
+right_offset = 220 # 35
 
 gripper_length = 30
 forearm_length = 80
@@ -58,7 +58,7 @@ def setAngles(base, left, right):
 
 def moveTo(x, y, z):
     b = math.atan2(y, x) * (180/math.pi) # base angle
-    l = math.sqrt(x*x + y*y) - gripper_length # x and y extension
+    l = math.sqrt(x*x + y*y)# - gripper_length # x and y extension
     h = math.sqrt(l*l + z*z)
     phi = math.atan(z/l) * (180/math.pi)
     theta = math.acos((h/2)/80) * (180/math.pi)
@@ -97,34 +97,19 @@ def gripper_handle():
     gripperServo.setAngle(138, True)
 
 def gripper_drop():
-    gripperServo.setAngle(160, True)
+    gripperServo.setAngle(180, True)
 
-block_height = 25
-block_1_pos = (96, 82, 3)
-block_2_pos = (90, -82, 5)
+block_height = 30
+block_1_pos = (96, 82, 0)
+# block_2_pos = (90, -82, 0)
+block_2_pos = (65, -58, 0)
 
-safe_height = block_height * 5
+safe_height = 100
 
 def pick_block(block_pos, level = 0):
     dest_x = block_pos[0]
     dest_y = block_pos[1]
     dest_z = block_pos[2] + level * block_height
-    if level == 0:
-        if dest_x < 0:
-            dest_x += 3
-        else:
-            dest_x -= 3
-        if dest_y < 0:
-            dest_y += 3
-        else:
-            dest_y -= 3
-    drop_offset_x = 10
-    drop_offset_y = 10
-    if dest_x < 0:
-        drop_offset_x = -10
-    if dest_y < 0:
-        drop_offset_y = -10
-
     delay = 0.4
     # go to center first
     moveTo(dest_x, dest_y, safe_height)
@@ -134,51 +119,12 @@ def pick_block(block_pos, level = 0):
     gripper_handle()
     time.sleep(delay)
     moveTo(dest_x, dest_y, dest_z + 20)
-    moveTo(dest_x - drop_offset_x, dest_y - drop_offset_y, dest_z + 20)
     moveTo(dest_x, dest_y, safe_height)
 
 def drop_block(block_pos, level = 0):
     dest_x = block_pos[0]
     dest_y = block_pos[1]
-    dest_z = block_pos[2] + level * block_height + 10
-
-    if level == 3:
-        if dest_x < 0:
-            dest_x += 6
-        else:
-            dest_x -= 6
-        if dest_y < 0:
-            dest_y += 9
-        else:
-            dest_y -= 9
-
-    if level == 2:
-        if dest_x < 0:
-            dest_x += 2
-        else:
-            dest_x -= 2
-        if dest_y < 0:
-            dest_y += 3
-        else:
-            dest_y -= 3
-
-    if level == 0:
-        if dest_x < 0:
-            dest_x += 3
-        else:
-            dest_x -= 3
-        if dest_y < 0:
-            dest_y += 2
-        else:
-            dest_y -= 2
-
-    drop_offset_x = 10
-    drop_offset_y = 10
-    if dest_x < 0:
-        drop_offset_x = -10
-    if dest_y < 0:
-        drop_offset_y = -10
-
+    dest_z = block_pos[2] + level * block_height
     delay = 0.4
     # go to center first
     moveTo(block_pos[0], block_pos[1], safe_height)
@@ -188,7 +134,6 @@ def drop_block(block_pos, level = 0):
     gripper_drop()
     time.sleep(delay)
     moveTo(block_pos[0], block_pos[1], dest_z + 20)
-    moveTo(block_pos[0] - drop_offset_x, block_pos[1] - drop_offset_y, dest_z + 20)
     moveTo(block_pos[0], block_pos[1], safe_height)
 
 def program1():
@@ -207,8 +152,29 @@ def program2():
     pick_block(block_2_pos, 1)
     drop_block(block_1_pos, 2)
 
-program1()
-program2()
-time.sleep(5)
-program1()
-program2()
+center_block_pos = (90, 0, 0)
+# pick_block(block_2_pos, 1)
+# drop_block(center_block_pos)
+# moveTo(115, -90, 50)
+moveTo(58, -58, 90)
+moveTo(58, -58, 60)
+time.sleep(0.3)
+gripper_handle()
+time.sleep(0.3)
+moveTo(58, -58, 90)
+moveTo(90, 0, 80)
+moveTo(90, 0, 10)
+time.sleep(0.3)
+gripper_drop()
+moveTo(90, 0, 80)
+
+moveTo(58, -58, 90)
+moveTo(58, -58, 40)
+time.sleep(0.3)
+gripper_handle()
+time.sleep(0.3)
+moveTo(58, -58, 90)
+moveTo(90, 0, 80)
+moveTo(90, 0, 40)
+time.sleep(0.3)
+gripper_drop()
