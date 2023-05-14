@@ -295,10 +295,16 @@ class HomePage(tk.Frame):
         global video_device
         _, frame = video_device.read()
 
+        filter_coordinates = [200,120,540,360]
+
         # create black rectangles for grippers to prevent from red mask
         frame = cv2.rectangle(frame, (0, 480), (640, 380), (0, 0, 0), -1)
         frame = cv2.rectangle(frame, (0, 0), (640, 100), (0, 0, 0), -1)
         frame = cv2.rectangle(frame, (560, 0), (640, 480), (0, 0, 0), -1)
+        frame = cv2.rectangle(frame, (
+            filter_coordinates[0], filter_coordinates[1]),
+            (filter_coordinates[2], filter_coordinates[3]),
+            (0, 0, 0), 4)
 
         hsv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -306,16 +312,29 @@ class HomePage(tk.Frame):
         red_lower = np.array([100 + color_sensitivity,100,100], dtype="uint8")
         red_upper = np.array([255 - color_sensitivity,255,255], dtype="uint8")
 
+        color_sensitivity = 50
         white_lower = np.array([0,0,255 - color_sensitivity], dtype="uint8")
         white_upper = np.array([255,color_sensitivity,255], dtype="uint8")
 
-        mask = cv2.inRange(hsv_image, red_lower, red_upper)
+        red_mask = cv2.inRange(hsv_image, red_lower, red_upper)
 
-        captured_image = Image.fromarray(mask)
+        captured_image = Image.fromarray(red_mask)
         bbox = captured_image.getbbox() 
         if bbox is not None:
             x1, y1, x2, y2 = bbox
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 5)
+            if x1 >= filter_coordinates[0] and x2 <= filter_coordinates[2] and y1 >= filter_coordinates[1] and y2 <= filter_coordinates[3]:
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 5)
+
+        white_mask = cv2.inRange(hsv_image, white_lower, white_upper)
+
+        captured_image = Image.fromarray(white_mask)
+        bbox = captured_image.getbbox() 
+        if bbox is not None:
+            x1, y1, x2, y2 = bbox
+            if x1 >= filter_coordinates[0] and x2 <= filter_coordinates[2] and y1 >= filter_coordinates[1] and y2 <= filter_coordinates[3]:
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 255, 255), 5)
+
+
 
         opencv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
         captured_image = Image.fromarray(opencv_image)
