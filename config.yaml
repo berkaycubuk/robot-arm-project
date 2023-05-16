@@ -1,0 +1,23 @@
+robot:
+        pwm_frequency: 50
+        base:
+                pin: 0
+                start_angle: 73
+                offset: 73
+        left:
+                pin: 1
+                start_angle: 92
+                offset: 78
+        right:
+                pin: 2
+                start_angle: 130
+                offset: 220
+        gripper:
+                pin: 3
+                start_angle: 180
+                min_angle: 138
+                max_angle: 180
+camera:
+        index: 0
+        width: 640
+        height: 480

@@ -7,22 +7,28 @@ from servo import Servo
 import math
 import time
 import numpy as np
+import yaml
+
+with open(r'/home/jnuu/robot-arm/config.yaml') as file:
+    config = yaml.safe_load(file)
+
+robot_config = config["robot"]
 
 pwm = PCA9685()
-pwm.setPWMFreq(50)
+pwm.setPWMFreq(robot_config["pwm_frequency"])
 
 # servos
-baseServo = Servo(pwm, 0, 73)
-leftServo = Servo(pwm, 1, 92)
-rightServo = Servo(pwm, 2, 130)
-gripperServo = Servo(pwm, 3, 180)
+baseServo = Servo(pwm, robot_config["base"]["pin"], robot_config["base"]["start_angle"])
+leftServo = Servo(pwm, robot_config["left"]["pin"], robot_config["left"]["start_angle"])
+rightServo = Servo(pwm, robot_config["right"]["pin"], robot_config["right"]["start_angle"])
+gripperServo = Servo(pwm, robot_config["gripper"]["pin"], robot_config["gripper"]["start_angle"])
 
-base_offset = 73
-left_offset = 78
-right_offset = 220 # 35
+base_offset = robot_config["base"]["offset"]
+left_offset = robot_config["left"]["offset"]
+right_offset = robot_config["right"]["offset"]
 
 gripper_length = 30
-forearm_length = 80
+forearm_length = 80 + 60
 backarm_length = 80
 
 base_angle_last = 70
@@ -109,10 +115,10 @@ def program1():
     moveTo(80, 0, 80)
 
 def gripper_handle():
-    gripperServo.setAngle(138, True)
+    gripperServo.setAngle(robot_config["gripper"]["min_angle"], True)
 
 def gripper_drop():
-    gripperServo.setAngle(180, True)
+    gripperServo.setAngle(robot_config["gripper"]["max_angle"], True)
 
 block_height = 30
 block_1_pos = (96, 82, 0)
@@ -167,9 +173,9 @@ def program2():
     pick_block(block_2_pos, 1)
     drop_block(block_1_pos, 2)
 
-video_device = cv2.VideoCapture(0)
-video_device.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-video_device.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+video_device = cv2.VideoCapture(config["camera"]["index"])
+video_device.set(cv2.CAP_PROP_FRAME_WIDTH, config["camera"]["width"])
+video_device.set(cv2.CAP_PROP_FRAME_HEIGHT, config["camera"]["height"])
 
 yellow = [0, 255, 255]
 red = [255, 100, 100]
@@ -308,33 +314,37 @@ class HomePage(tk.Frame):
 
         hsv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-        color_sensitivity = 50
-        red_lower = np.array([100 + color_sensitivity,100,100], dtype="uint8")
-        red_upper = np.array([255 - color_sensitivity,255,255], dtype="uint8")
+        def box_render(bbox, color, filter_coordinates, frame):
+            if bbox is not None:
+                x1, y1, x2, y2 = bbox
+                if x1 >= filter_coordinates[0] and x2 <= filter_coordinates[2] and y1 >= filter_coordinates[1] and y2 <= filter_coordinates[3]:
+                    length = abs(x2 - x1)
+                    height = abs(y2 - y1)
 
-        color_sensitivity = 50
-        white_lower = np.array([0,0,255 - color_sensitivity], dtype="uint8")
-        white_upper = np.array([255,color_sensitivity,255], dtype="uint8")
+                    if length >= 40 and height >= 40:
+                        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 5)
 
-        red_mask = cv2.inRange(hsv_image, red_lower, red_upper)
+        def color_detect(hsv_image, lower, upper, color):
+            filter_mask = cv2.inRange(hsv_image, lower, upper)
+            captured_image = Image.fromarray(filter_mask)
+            bbox = captured_image.getbbox() 
+            box_render(bbox, color, filter_coordinates, frame)
 
-        captured_image = Image.fromarray(red_mask)
-        bbox = captured_image.getbbox() 
-        if bbox is not None:
-            x1, y1, x2, y2 = bbox
-            if x1 >= filter_coordinates[0] and x2 <= filter_coordinates[2] and y1 >= filter_coordinates[1] and y2 <= filter_coordinates[3]:
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 5)
+        # red
+        color_detect(
+                hsv_image,
+                np.array([100 + 50,100,100], dtype="uint8"),
+                np.array([255 - 50,255,255], dtype="uint8"),
+                (0, 0, 255)
+            )
 
-        white_mask = cv2.inRange(hsv_image, white_lower, white_upper)
-
-        captured_image = Image.fromarray(white_mask)
-        bbox = captured_image.getbbox() 
-        if bbox is not None:
-            x1, y1, x2, y2 = bbox
-            if x1 >= filter_coordinates[0] and x2 <= filter_coordinates[2] and y1 >= filter_coordinates[1] and y2 <= filter_coordinates[3]:
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 255, 255), 5)
-
-
+        # white
+        color_detect(
+                hsv_image,
+                np.array([0,0,255 - 50], dtype="uint8"),
+                np.array([255,50,255], dtype="uint8"),
+                (255, 255, 255)
+            )
 
         opencv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
         captured_image = Image.fromarray(opencv_image)
@@ -344,6 +354,11 @@ class HomePage(tk.Frame):
         self.videoLabel.after(10, self.camLoop)
 
 ui = UI()
+
+moveTo(80, 0, 80)
+time.sleep(1)
+moveTo(110, 0, 60)
+
 ui.mainloop()
 
 video_device.release()
