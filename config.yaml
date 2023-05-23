@@ -6,12 +6,12 @@ robot:
                 offset: 73
         left:
                 pin: 1
-                start_angle: 92
-                offset: 78
+                start_angle: 97
+                offset: 122
         right:
                 pin: 2
                 start_angle: 130
-                offset: 220
+                offset: 200
         gripper:
                 pin: 3
                 start_angle: 180

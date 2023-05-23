@@ -9,6 +9,7 @@ import time
 import numpy as np
 import yaml
 
+# load config file
 with open(r'/home/jnuu/robot-arm/config.yaml') as file:
     config = yaml.safe_load(file)
 
@@ -28,7 +29,7 @@ left_offset = robot_config["left"]["offset"]
 right_offset = robot_config["right"]["offset"]
 
 gripper_length = 30
-forearm_length = 80 + 60
+forearm_length = 80
 backarm_length = 80
 
 base_angle_last = 70
@@ -76,7 +77,7 @@ def moveTo(x, y, z):
     global current_z_pos
 
     b = math.atan2(y, x) * (180/math.pi) # base angle
-    l = math.sqrt(x*x + y*y)# - gripper_length # x and y extension
+    l = math.sqrt(x*x + y*y) # - gripper_length # x and y extension
     h = math.sqrt(l*l + z*z)
     phi = math.atan(z/l) * (180/math.pi)
     theta = math.acos((h/2)/80) * (180/math.pi)
@@ -177,6 +178,28 @@ video_device = cv2.VideoCapture(config["camera"]["index"])
 video_device.set(cv2.CAP_PROP_FRAME_WIDTH, config["camera"]["width"])
 video_device.set(cv2.CAP_PROP_FRAME_HEIGHT, config["camera"]["height"])
 
+def video_frame_add_dark_areas(frame):
+    frame = cv2.rectangle(frame, (0, 480), (640, 360), (0, 0, 0), -1)
+    frame = cv2.rectangle(frame, (0, 0), (640, 100), (0, 0, 0), -1)
+    frame = cv2.rectangle(frame, (560, 0), (640, 480), (0, 0, 0), -1)
+
+def box_render(bbox, color, filter_coordinates, frame):
+    if bbox is not None:
+        x1, y1, x2, y2 = bbox
+        if x1 >= filter_coordinates[0] and x2 <= filter_coordinates[2] and y1 >= filter_coordinates[1] and y2 <= filter_coordinates[3]:
+            length = abs(x2 - x1)
+            height = abs(y2 - y1)
+
+            if length >= 40 and height >= 40:
+                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 5)
+
+def color_detect(hsv_image, lower, upper, color, filter_coordinates, frame):
+    filter_mask = cv2.inRange(hsv_image, lower, upper)
+    captured_image = Image.fromarray(filter_mask)
+
+    bbox = captured_image.getbbox() 
+    box_render(bbox, color, filter_coordinates, frame)
+
 yellow = [0, 255, 255]
 red = [255, 100, 100]
 white = [255, 255, 255]
@@ -236,6 +259,50 @@ class HomePage(tk.Frame):
         button_initial_position = tk.Button(
                 left_controls_frame, text="BAŞLANGIÇ KONUMU", command=initial_position)
         button_initial_position.grid(row=1, column=0, ipadx=30, ipady=20)
+
+        def program_one():
+            # step 1
+            moveTo(80, 0, 5)
+            time.sleep(0.5)
+            gripper_handle()
+            time.sleep(0.5)
+            moveTo(80, 0, 80)
+            moveTo(90, 50, 80)
+            time.sleep(0.5)
+            moveTo(90, 50, 5)
+            time.sleep(0.5)
+            gripper_drop()
+            time.sleep(0.5)
+            moveTo(90, 50, 80)
+            moveTo(80, 0, 80)
+
+            # step 2
+            moveTo(80, 0, 5)
+            time.sleep(0.5)
+            gripper_handle()
+            time.sleep(0.5)
+            moveTo(80, 0, 80)
+            moveTo(90, 50, 80)
+            time.sleep(0.5)
+            moveTo(90, 50, 25)
+            time.sleep(0.5)
+            gripper_drop()
+            time.sleep(0.5)
+            moveTo(90, 50, 80)
+            moveTo(80, 0, 80)
+
+        def program_two():
+            _, frame = video_device.read()
+            hsv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+            video_frame_add_dark_areas(frame)
+            red_lower = np.array([100 + 50,100,100], dtype="uint8")
+            red_upper = np.array([255 - 50,255,255], dtype="uint8")
+            filter_mask = cv2.inRange(hsv_image, red_lower, red_upper)
+            captured_image = Image.fromarray(filter_mask)
+
+        button_program_one = tk.Button(
+                left_controls_frame, text="PROGRAM 1", command=program_one)
+        button_program_one.grid(row=2, column=0, ipadx=30, ipady=20)
 
         return left_controls_frame
 
@@ -301,12 +368,11 @@ class HomePage(tk.Frame):
         global video_device
         _, frame = video_device.read()
 
-        filter_coordinates = [200,120,540,360]
+        filter_coordinates = [200,120,540,340]
 
-        # create black rectangles for grippers to prevent from red mask
-        frame = cv2.rectangle(frame, (0, 480), (640, 380), (0, 0, 0), -1)
-        frame = cv2.rectangle(frame, (0, 0), (640, 100), (0, 0, 0), -1)
-        frame = cv2.rectangle(frame, (560, 0), (640, 480), (0, 0, 0), -1)
+        # create black rectangles for grippers to prevent from mask
+        video_frame_add_dark_areas(frame)
+
         frame = cv2.rectangle(frame, (
             filter_coordinates[0], filter_coordinates[1]),
             (filter_coordinates[2], filter_coordinates[3]),
@@ -314,28 +380,14 @@ class HomePage(tk.Frame):
 
         hsv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-        def box_render(bbox, color, filter_coordinates, frame):
-            if bbox is not None:
-                x1, y1, x2, y2 = bbox
-                if x1 >= filter_coordinates[0] and x2 <= filter_coordinates[2] and y1 >= filter_coordinates[1] and y2 <= filter_coordinates[3]:
-                    length = abs(x2 - x1)
-                    height = abs(y2 - y1)
-
-                    if length >= 40 and height >= 40:
-                        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 5)
-
-        def color_detect(hsv_image, lower, upper, color):
-            filter_mask = cv2.inRange(hsv_image, lower, upper)
-            captured_image = Image.fromarray(filter_mask)
-            bbox = captured_image.getbbox() 
-            box_render(bbox, color, filter_coordinates, frame)
-
         # red
         color_detect(
                 hsv_image,
                 np.array([100 + 50,100,100], dtype="uint8"),
                 np.array([255 - 50,255,255], dtype="uint8"),
-                (0, 0, 255)
+                (0, 0, 255),
+                filter_coordinates,
+                frame
             )
 
         # white
@@ -343,7 +395,9 @@ class HomePage(tk.Frame):
                 hsv_image,
                 np.array([0,0,255 - 50], dtype="uint8"),
                 np.array([255,50,255], dtype="uint8"),
-                (255, 255, 255)
+                (255, 255, 255),
+                filter_coordinates,
+                frame
             )
 
         opencv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
@@ -355,9 +409,7 @@ class HomePage(tk.Frame):
 
 ui = UI()
 
-moveTo(80, 0, 80)
-time.sleep(1)
-moveTo(110, 0, 60)
+moveTo(80, 0, 80) # home position
 
 ui.mainloop()
 

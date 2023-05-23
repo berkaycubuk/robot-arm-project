@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
-python3 ./robot-arm/cam.py
+cd ./robot-arm
+python3 -m robo_arm
