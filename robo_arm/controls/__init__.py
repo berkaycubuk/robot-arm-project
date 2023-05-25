@@ -23,6 +23,10 @@ class Controls():
         self.left_offset = robot_config["left"]["offset"]
         self.right_offset = robot_config["right"]["offset"]
 
+        self.angle_base = 0
+        self.angle_left = 0
+        self.angle_right = 0
+
         # in millimeter
         self.pos_x = 80
         self.pos_y = 0
@@ -32,9 +36,43 @@ class Controls():
         self.move_to(80, 0, 80)
 
     def set_angles(self, base, left, right):
-        self.base_servo.setAngle(base, True)
+
+        # if self.angle_base == 0 and self.angle_left == 0 and self.angle_right == 0:
+        #     self.angle_base = base
+        #     self.angle_left = left
+        #     self.angle_right = right
+
+        #     self.base_servo.setAngle(base, True)
+        #     self.left_servo.setAngle(left, True)
+        #     self.right_servo.setAngle(right, True)
+        #     return
+
+        # running = True
+        # while running:
+        #     if self.angle_base != base:
+        #         if self.angle_base > base:
+        #             self.angle_base -= 1            
+        #         else:
+        #             self.angle_base += 1            
+
+        #     if self.angle_left != left:
+        #         if self.angle_left > left:
+        #             self.angle_left -= 1            
+        #         else:
+        #             self.angle_left += 1            
+
+        #     if self.angle_right != right:
+        #         if self.angle_right > right:
+        #             self.angle_right -= 1            
+        #         else:
+        #             self.angle_right += 1            
+
+        #     if self.angle_base == base and self.angle_left == left and self.angle_right == right:
+        #         running = False
+
         self.left_servo.setAngle(left, True)
         self.right_servo.setAngle(right, True)
+        self.base_servo.setAngle(base, True)
 
     def move_to(self, x, y, z):
         b = math.atan2(y, x) * (180/math.pi) # base angle
