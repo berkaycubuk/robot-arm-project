@@ -6,6 +6,45 @@ from robo_arm.camera import Camera
 import cv2
 from PIL import Image, ImageTk
 import numpy as np
+import yaml
+
+def load_blocks_file():
+    with open(r'/home/jnuu/robot-arm/blocks.yaml') as file:
+        blocks_file = yaml.safe_load(file)
+
+    return blocks_file['blocks']
+
+def write_blocks_file(data):
+    with open(r'/home/jnuu/robot-arm/blocks.yaml', 'w') as file:
+        yaml.dump({'blocks': data}, file)
+
+def load_orders_file():
+    with open(r'/home/jnuu/robot-arm/orders.yaml') as file:
+        orders_file = yaml.safe_load(file)
+
+    return orders_file
+
+def write_orders_file(data):
+    with open(r'/home/jnuu/robot-arm/orders.yaml', 'w') as file:
+        yaml.dump(data, file)
+
+def find_order(orders, order_id):
+    found = None
+    for order in orders:
+        if order['id'] == order_id:
+            found = order
+            break
+
+    return found
+
+def find_block(blocks, block_name):
+    found = None
+    for block in blocks:
+        if block['name'] == block_name:
+            found = block
+            break
+
+    return found
 
 class UI(tk.Tk):
     def __init__(self):
@@ -20,42 +59,115 @@ class UI(tk.Tk):
         notebook.add(frame1, text='Kontroller')
 
         frame2 = tk.Frame(notebook)
-        editor_page = EditorPage(self, frame2).grid(row=0,column=0)
-        notebook.add(frame2, text='Editör')
+        orders_page = OrdersPage(self, frame2).grid(row=0,column=0)
+        notebook.add(frame2, text='Görevler')
+
+        frame3 = tk.Frame(notebook)
+        blocks_page = BlocksPage(self, frame3).grid(row=0,column=0)
+        notebook.add(frame3, text='Bloklar')
 
         notebook.enable_traversal()
 
-class EditorPage(tk.Frame):
+class OrdersPage(tk.Frame):
+    def __init__(self, root, container):
+        super().__init__(container)
+
+        orders = []
+
+        orders = load_orders_file()
+
+        orders_listbox = tk.Listbox(self)
+        orders_listbox.grid(row=0,column=0)
+
+        order_details = tk.Frame(self)
+        order_details.grid(row=0,column=1)
+
+        for order in orders:
+            orders_listbox.insert(tk.END, order['id'])
+
+        block_names = []
+        for block in load_blocks_file():
+            block_names.append(block['name'])
+
+        order_id_label = tk.Label(order_details, text="ID:").grid(row=0,column=0)
+        order_id_value = tk.Label(order_details, text="")
+        order_id_value.grid(row=0,column=1)
+
+        order_action_label = tk.Label(order_details, text="Aksiyon:").grid(row=1,column=0)
+        order_action_value = tk.Label(order_details, text="")
+        order_action_value.grid(row=1,column=1)
+
+        def order_click_callback(event):
+            selection = event.widget.curselection()
+            if selection:
+                index = selection[0]
+                data = event.widget.get(index)
+                order = find_order(orders, data)
+                order_id_value.configure(text=order['id'])
+                order_action_value.configure(text=order['action'])
+
+        orders_listbox.bind("<<ListboxSelect>>", order_click_callback)
+
+        x_input_label = tk.Label(self, text="x konumu").grid(row=1,column=0)
+        x_value = tk.StringVar()
+        x_input = tk.Entry(self, textvariable=x_value).grid(row=1,column=1)
+
+        y_input_label = tk.Label(self, text="y konumu").grid(row=2,column=0)
+        y_value = tk.StringVar()
+        y_input = tk.Entry(self, textvariable=y_value).grid(row=2,column=1)
+
+        block_input_label = tk.Label(self, text="blok").grid(row=3,column=0)
+        block_value = tk.StringVar()
+        block_input = ttk.Combobox(self, textvariable=block_value)
+        block_input['values'] = tuple(block_names)
+        block_input.grid(row=3,column=1)
+
+class BlocksPage(tk.Frame):
     def __init__(self, root, container):
         super().__init__(container)
 
         blocks = []
 
+        blocks = load_blocks_file()
+
         blocks_listbox = tk.Listbox(self)
         blocks_listbox.grid(row=0,column=0)
 
-        add_block_name_label = tk.Label(self, text="Blok adı").grid(row=0,column=1)
+        for block in blocks:
+            blocks_listbox.insert(tk.END, block['name'])
+
+        form = tk.Frame(self)
+        form.grid(row=0, column=1)
+
+        add_block_name_label = tk.Label(form, text="Blok adı").grid(row=0,column=1)
         block_name = tk.StringVar()
-        add_block_name = tk.Entry(self, textvariable=block_name).grid(row=0, column=2)
+        add_block_name = tk.Entry(form, textvariable=block_name).grid(row=0, column=2)
         block_x = tk.StringVar()
-        add_block_x_label = tk.Label(self, text="x konumu").grid(row=1,column=1)
-        add_block_x = tk.Entry(self, textvariable=block_x).grid(row=1, column=2)
+        add_block_x_label = tk.Label(form, text="x konumu").grid(row=1,column=1)
+        add_block_x = tk.Entry(form, textvariable=block_x).grid(row=1, column=2)
         block_y = tk.StringVar()
-        add_block_y_label = tk.Label(self, text="y konumu").grid(row=2,column=1)
-        add_block_y = tk.Entry(self, textvariable=block_y).grid(row=2, column=2)
+        add_block_y_label = tk.Label(form, text="y konumu").grid(row=2,column=1)
+        add_block_y = tk.Entry(form, textvariable=block_y).grid(row=2, column=2)
         block_level = tk.StringVar()
-        add_block_level_label = tk.Label(self, text="blok seviyesi").grid(row=3,column=1)
-        add_block_level = tk.Entry(self, textvariable=block_level).grid(row=3, column=2)
+        add_block_level_label = tk.Label(form, text="blok seviyesi").grid(row=3,column=1)
+        add_block_level = tk.Entry(form, textvariable=block_level).grid(row=3, column=2)
+        block_color = tk.StringVar()
+        add_block_color_label = tk.Label(form, text="blok rengi").grid(row=4,column=1)
+        add_block_color = ttk.Combobox(form, textvariable=block_color)
+        add_block_color['values'] = ('Kırmızı', 'Beyaz')
+        add_block_color.grid(row=4, column=2)
 
         def add_block():
             blocks.append({
                 'name': block_name.get(),
                 'x': block_x.get(),
                 'y': block_y.get(),
-                'level': block_level.get()
+                'level': block_level.get(),
+                'color': block_color.get()
             })
             blocks_listbox.insert(tk.END, block_name.get())
-        add_block_button = tk.Button(self, text="blok ekle", command=add_block).grid(row=4,column=1)
+            write_blocks_file(blocks)
+        add_block_button = tk.Button(form, text="blok ekle", command=add_block).grid(row=5,column=1)
 
         def delete_block():
             if blocks_listbox.curselection() is None:
@@ -64,6 +176,7 @@ class EditorPage(tk.Frame):
                 if blocks_listbox.get(blocks_listbox.curselection()[0]) == item['name']:
                     blocks.remove(item)
             blocks_listbox.delete(blocks_listbox.curselection()[0])
+            write_blocks_file(blocks)
         delete_block_button = tk.Button(self, text="Bloğu sil", command=delete_block).grid(row=1,column=0)
 
 class ControlPage(tk.Frame):
@@ -206,6 +319,48 @@ class ControlPage(tk.Frame):
         button_program_one = tk.Button(
                 left_controls_frame, text="PROGRAM 1", command=program_one)
         button_program_one.grid(row=2, column=0, ipadx=30, ipady=20)
+
+        def exec_order(order):
+            blocks = load_blocks_file()
+            if order['action'] == "pick":
+                block = find_block(blocks, order['block']) 
+                if block is None:
+                    print("blok bulunamadı")
+                    return
+                self.controls.move_to(int(block['x']), int(block['y']), 80)
+                if int(block['level']) == 0:
+                    self.controls.move_to(int(block['x']), int(block['y']), 10)
+                else:
+                    self.controls.move_to(int(block['x']), int(block['y']), int(block['level']) * 25)
+                self.controls.gripper_pick()
+                self.controls.move_to(int(block['x']), int(block['y']), 80)
+            elif order['action'] == "drop":
+                self.controls.move_to(int(order['to_x']), int(order['to_y']), 80)
+                if int(order['to_level']) == 0:
+                    self.controls.move_to(int(order['to_x']), int(order['to_y']), 10)
+                else:
+                    self.controls.move_to(int(order['to_x']), int(order['to_y']), int(order['to_level']) * 25)
+                self.controls.gripper_drop()
+                self.controls.move_to(int(order['to_x']), int(order['to_y']), 80)
+
+                for key, block in enumerate(blocks):
+                    if block['name'] == order['block']:
+                        blocks[key]['x'] = order['to_x']
+                        blocks[key]['y'] = order['to_y']
+                        blocks[key]['level'] = order['to_level']
+
+                write_blocks_file(blocks)
+
+        def execute_orders():
+            orders = load_orders_file()
+
+            for order in orders:
+                exec_order(order)
+                time.sleep(0.5)
+
+        button_exec_orders = tk.Button(
+                left_controls_frame, text="Görevleri Çalıştır", command=execute_orders)
+        button_exec_orders.grid(row=3, column=0, ipadx=30, ipady=20)
 
         return left_controls_frame
 
