@@ -3,6 +3,7 @@ import RPi.GPIO as GPIO
 from PCA9685 import PCA9685
 from robo_arm.servo import Servo
 import math
+from robo_arm.utils import load_blocks_file, write_blocks_file, find_block
 
 # load config file
 with open(r'/home/jnuu/robot-arm/config.yaml') as file:
@@ -35,41 +36,45 @@ class Controls():
         # initial position
         self.move_to(80, 0, 80)
 
+    def order_pick(self, block):
+        self.move_to(int(block['x']), int(block['y']), 80)
+        if int(block['level']) == 0:
+            self.move_to(int(block['x']), int(block['y']), 10)
+        else:
+            self.move_to(int(block['x']), int(block['y']), int(block['level']) * 25)
+        self.gripper_pick()
+        self.move_to(int(block['x']), int(block['y']), 80)
+
+    def order_drop(self, order):
+        self.move_to(int(order['to_x']), int(order['to_y']), 80)
+        if int(order['to_level']) == 0:
+            self.move_to(int(order['to_x']), int(order['to_y']), 10)
+        else:
+            self.move_to(int(order['to_x']), int(order['to_y']), int(order['to_level']) * 25)
+        self.gripper_drop()
+        self.move_to(int(order['to_x']), int(order['to_y']), 80)
+
+    def exec_order(self, order):
+        blocks = load_blocks_file()
+        if order['action'] == "pick":
+            block = find_block(blocks, order['block']) 
+            # TODO: kamera ile renk kontrolü
+            if block is None:
+                print("blok bulunamadı")
+                return
+            self.order_pick(block)
+        elif order['action'] == "drop":
+            self.order_drop(order)
+
+            for key, block in enumerate(blocks):
+                if block['name'] == order['block']:
+                    blocks[key]['x'] = order['to_x']
+                    blocks[key]['y'] = order['to_y']
+                    blocks[key]['level'] = order['to_level']
+
+            write_blocks_file(blocks)
+
     def set_angles(self, base, left, right):
-
-        # if self.angle_base == 0 and self.angle_left == 0 and self.angle_right == 0:
-        #     self.angle_base = base
-        #     self.angle_left = left
-        #     self.angle_right = right
-
-        #     self.base_servo.setAngle(base, True)
-        #     self.left_servo.setAngle(left, True)
-        #     self.right_servo.setAngle(right, True)
-        #     return
-
-        # running = True
-        # while running:
-        #     if self.angle_base != base:
-        #         if self.angle_base > base:
-        #             self.angle_base -= 1            
-        #         else:
-        #             self.angle_base += 1            
-
-        #     if self.angle_left != left:
-        #         if self.angle_left > left:
-        #             self.angle_left -= 1            
-        #         else:
-        #             self.angle_left += 1            
-
-        #     if self.angle_right != right:
-        #         if self.angle_right > right:
-        #             self.angle_right -= 1            
-        #         else:
-        #             self.angle_right += 1            
-
-        #     if self.angle_base == base and self.angle_left == left and self.angle_right == right:
-        #         running = False
-
         self.left_servo.setAngle(left, True)
         self.right_servo.setAngle(right, True)
         self.base_servo.setAngle(base, True)

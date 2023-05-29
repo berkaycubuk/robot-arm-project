@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
 import time
 from robo_arm.controls import Controls
 from robo_arm.camera import Camera
@@ -7,44 +8,9 @@ import cv2
 from PIL import Image, ImageTk
 import numpy as np
 import yaml
-
-def load_blocks_file():
-    with open(r'/home/jnuu/robot-arm/blocks.yaml') as file:
-        blocks_file = yaml.safe_load(file)
-
-    return blocks_file['blocks']
-
-def write_blocks_file(data):
-    with open(r'/home/jnuu/robot-arm/blocks.yaml', 'w') as file:
-        yaml.dump({'blocks': data}, file)
-
-def load_orders_file():
-    with open(r'/home/jnuu/robot-arm/orders.yaml') as file:
-        orders_file = yaml.safe_load(file)
-
-    return orders_file
-
-def write_orders_file(data):
-    with open(r'/home/jnuu/robot-arm/orders.yaml', 'w') as file:
-        yaml.dump(data, file)
-
-def find_order(orders, order_id):
-    found = None
-    for order in orders:
-        if order['id'] == order_id:
-            found = order
-            break
-
-    return found
-
-def find_block(blocks, block_name):
-    found = None
-    for block in blocks:
-        if block['name'] == block_name:
-            found = block
-            break
-
-    return found
+import random
+import string
+from robo_arm.utils import load_blocks_file, write_blocks_file, load_orders_file, write_orders_file, find_order, find_block
 
 class UI(tk.Tk):
     def __init__(self):
@@ -97,6 +63,21 @@ class OrdersPage(tk.Frame):
         order_action_value = tk.Label(order_details, text="")
         order_action_value.grid(row=1,column=1)
 
+        def delete_order():
+            selection = orders_listbox.curselection()
+            if selection:
+                index = selection[0]
+                data = event.widget.get(index)
+                for order in orders:
+                    if data == order['id']:
+                        orders.remove(order)
+                orders_listbox.delete(index)
+                write_orders_file(orders)
+            else:
+                messagebox.showerror('HATA', 'Silmek için herhangi bir görev seçmediniz.')
+
+        delete_button = tk.Button(order_details, text="Sil", command=delete_order).grid(row=2,column=0)
+
         def order_click_callback(event):
             selection = event.widget.curselection()
             if selection:
@@ -108,19 +89,50 @@ class OrdersPage(tk.Frame):
 
         orders_listbox.bind("<<ListboxSelect>>", order_click_callback)
 
-        x_input_label = tk.Label(self, text="x konumu").grid(row=1,column=0)
+        name_input_label = tk.Label(self, text="").grid(row=1,column=0)
+        name_value = tk.StringVar()
+        name_input = tk.Entry(self, textvariable=name_value).grid(row=1,column=1)
+
+        x_input_label = tk.Label(self, text="x konumu").grid(row=2,column=0)
         x_value = tk.StringVar()
-        x_input = tk.Entry(self, textvariable=x_value).grid(row=1,column=1)
+        x_input = tk.Entry(self, textvariable=x_value).grid(row=2,column=1)
 
-        y_input_label = tk.Label(self, text="y konumu").grid(row=2,column=0)
+        y_input_label = tk.Label(self, text="y konumu").grid(row=3,column=0)
         y_value = tk.StringVar()
-        y_input = tk.Entry(self, textvariable=y_value).grid(row=2,column=1)
+        y_input = tk.Entry(self, textvariable=y_value).grid(row=3,column=1)
 
-        block_input_label = tk.Label(self, text="blok").grid(row=3,column=0)
+        level_input_label = tk.Label(self, text="seviye").grid(row=4,column=0)
+        level_value = tk.StringVar()
+        level_input = tk.Entry(self, textvariable=level_value).grid(row=4,column=1)
+
+        block_input_label = tk.Label(self, text="blok").grid(row=5,column=0)
         block_value = tk.StringVar()
         block_input = ttk.Combobox(self, textvariable=block_value)
         block_input['values'] = tuple(block_names)
-        block_input.grid(row=3,column=1)
+        block_input.grid(row=5,column=1)
+
+        action_input_label = tk.Label(self, text="aksiyon").grid(row=6,column=0)
+        action_value = tk.StringVar()
+        action_input = ttk.Combobox(self, textvariable=action_value)
+        action_input['values'] = ('pick', 'drop')
+        action_input.grid(row=6,column=1)
+
+        def add_order():
+            #validation
+            if name_value.get() == "":
+                return
+
+            random_id = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
+            orders.append({
+                'id': name_value.get(),
+                'action': action_value.get(),
+                'block': block_value.get(),
+                'to_x': x_value.get(),
+                'to_y': y_value.get(),
+                'to_level': level_value.get()
+            })
+            write_orders_file(orders)
+        tk.Button(self, text="Ekle", command=add_order).grid(row=7,column=0)
 
 class BlocksPage(tk.Frame):
     def __init__(self, root, container):
@@ -158,6 +170,10 @@ class BlocksPage(tk.Frame):
         add_block_color.grid(row=4, column=2)
 
         def add_block():
+            # validation
+            if block_name.get() == "":
+                return
+
             blocks.append({
                 'name': block_name.get(),
                 'x': block_x.get(),
@@ -195,61 +211,11 @@ class ControlPage(tk.Frame):
 
     def cam_loop(self):
         frame = self.camera.read()
-        # hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-        # captured_image = Image.fromarray(hsv)
-        # photo_image = ImageTk.PhotoImage(image=captured_image)
-        # self.videoLabel.photo_image = photo_image
-        # self.videoLabel.configure(image=photo_image)
-        # self.videoLabel.after(10, self.cam_loop)
-
-        # edge detection
-
-        # hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        # mask = cv2.inRange(
-        #         hsv,
-        #         np.array([100 + 50,100,100], dtype="uint8"),
-        #         np.array([255 - 50,255,255], dtype="uint8"))
-        # edges = cv2.Canny(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY),50,200) 
-        # captured_image = Image.fromarray(edges)
-        # photo_image = ImageTk.PhotoImage(image=captured_image)
-        # self.videoLabel.photo_image = photo_image
-        # self.videoLabel.configure(image=photo_image)
-        # self.videoLabel.after(10, self.cam_loop)
-
-        # contour experiment
-
-        # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        # _, threshold = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
-
-        # contours, _ = cv2.findContours(
-        #         threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-        # i = 0
-
-        # for contour in contours:
-        #     if i == 0:
-        #         i = 1
-        #         continue
-
-        #     approx = cv2.approxPolyDP(contour, 0.01*cv2.arcLength(contour, True), True)
-
-
-        #     M = cv2.moments(contour)
-        #     if M['m00'] != 0.0:
-        #         x = int(M['m10']/M['m00'])
-        #         y = int(M['m01']/M['m00'])
-
-        #     u, k = approx[0][0]
-
-        #     if len(approx) == 4:
-        #         cv2.drawContours(frame, [contour], 0, (0, 255, 0), 5)
-        #         # cv2.putText(frame, "Rectangle", (u, k), cv2.FONT_HERSHEY_COMPLEX, 1, 0, 2)
-
-        # captured_image = Image.fromarray(frame)
-        # photo_image = ImageTk.PhotoImage(image=captured_image)
-        # self.videoLabel.photo_image = photo_image
-        # self.videoLabel.configure(image=photo_image)
-        # self.videoLabel.after(10, self.cam_loop)
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+        tk_image = self.camera.tk_image(hsv)
+        self.videoLabel.photo_image = tk_image
+        self.videoLabel.configure(image=tk_image)
+        self.videoLabel.after(10, self.cam_loop)
 
     def left_controls(self):
         left_controls_frame = tk.Frame(self)
@@ -320,42 +286,11 @@ class ControlPage(tk.Frame):
                 left_controls_frame, text="PROGRAM 1", command=program_one)
         button_program_one.grid(row=2, column=0, ipadx=30, ipady=20)
 
-        def exec_order(order):
-            blocks = load_blocks_file()
-            if order['action'] == "pick":
-                block = find_block(blocks, order['block']) 
-                if block is None:
-                    print("blok bulunamadı")
-                    return
-                self.controls.move_to(int(block['x']), int(block['y']), 80)
-                if int(block['level']) == 0:
-                    self.controls.move_to(int(block['x']), int(block['y']), 10)
-                else:
-                    self.controls.move_to(int(block['x']), int(block['y']), int(block['level']) * 25)
-                self.controls.gripper_pick()
-                self.controls.move_to(int(block['x']), int(block['y']), 80)
-            elif order['action'] == "drop":
-                self.controls.move_to(int(order['to_x']), int(order['to_y']), 80)
-                if int(order['to_level']) == 0:
-                    self.controls.move_to(int(order['to_x']), int(order['to_y']), 10)
-                else:
-                    self.controls.move_to(int(order['to_x']), int(order['to_y']), int(order['to_level']) * 25)
-                self.controls.gripper_drop()
-                self.controls.move_to(int(order['to_x']), int(order['to_y']), 80)
-
-                for key, block in enumerate(blocks):
-                    if block['name'] == order['block']:
-                        blocks[key]['x'] = order['to_x']
-                        blocks[key]['y'] = order['to_y']
-                        blocks[key]['level'] = order['to_level']
-
-                write_blocks_file(blocks)
-
         def execute_orders():
             orders = load_orders_file()
 
             for order in orders:
-                exec_order(order)
+                self.controls.exec_order(order)
                 time.sleep(0.5)
 
         button_exec_orders = tk.Button(

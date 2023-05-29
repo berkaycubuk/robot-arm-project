@@ -1,18 +1,4 @@
-- id: "bloku_al"
-  action: "pick"
-  block: "blok_1"
-- id: "bloku_birak"
-  action: "drop"
-  block: "blok_1"
-  to_x: 80
-  to_y: 60
-  to_level: 0
-- id: "bloku_al_2"
-  action: "pick"
-  block: "blok_1"
-- id: "bloku_birak_2"
-  action: "drop"
-  block: "blok_1"
-  to_x: 80
-  to_y: 0
-  to_level: 0
+- {action: pick, block: blok_1, id: bloku_al}
+- {action: drop, block: blok_1, id: bloku_birak, to_level: 0, to_x: 80, to_y: 60}
+- {action: pick, block: blok_1, id: bloku_al_2}
+- {action: drop, block: blok_1, id: bloku_birak_2, to_level: 0, to_x: 80, to_y: 0}
