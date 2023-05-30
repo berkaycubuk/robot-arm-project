@@ -10,7 +10,10 @@ import numpy as np
 import yaml
 import random
 import string
+from concurrent import futures
 from robo_arm.utils import load_blocks_file, write_blocks_file, load_orders_file, write_orders_file, find_order, find_block
+
+thread_pool_executor = futures.ThreadPoolExecutor(max_workers=1)
 
 class UI(tk.Tk):
     def __init__(self):
@@ -203,6 +206,14 @@ class ControlPage(tk.Frame):
 
         self.left_controls().grid(row=0, column=0)
 
+        self.red_lower = np.array([100 + 50,100,100], dtype='uint8')
+        self.red_upper = np.array([255 - 50,255,255], dtype="uint8")
+
+        self.white_lower = np.array([0,0,255 - 50], dtype="uint8")
+        self.white_upper = np.array([255,50,255], dtype="uint8")
+
+        self.filter_coordinates = [200,120,540,340]
+
         self.videoLabel = tk.Label(self)
         self.videoLabel.grid(row=0, column=1)
         self.cam_loop()
@@ -211,8 +222,33 @@ class ControlPage(tk.Frame):
 
     def cam_loop(self):
         frame = self.camera.read()
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-        tk_image = self.camera.tk_image(hsv)
+        cropped_frame = frame[120:340,200:540]
+
+        hsv = cv2.cvtColor(cropped_frame, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv, self.red_lower, self.red_upper)
+        image = Image.fromarray(mask)
+        bbox = image.getbbox()
+        if bbox is not None:
+            x1, y1, x2, y2 = bbox
+            length = abs(x2 - x1)
+            height = abs(y2 - y1)
+            if length >= 40 and height >= 40:
+                cv2.rectangle(frame, (x1 + self.filter_coordinates[0], y1 + self.filter_coordinates[1]), (x2 + self.filter_coordinates[0], y2 + self.filter_coordinates[1]), (0, 0, 255), 5)
+
+        # white
+        hsv = cv2.cvtColor(cropped_frame, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv, self.white_lower, self.white_upper)
+        image = Image.fromarray(mask)
+        bbox = image.getbbox()
+        if bbox is not None:
+            x1, y1, x2, y2 = bbox
+            length = abs(x2 - x1)
+            height = abs(y2 - y1)
+            if length >= 40 and height >= 40:
+                cv2.rectangle(frame, (x1 + self.filter_coordinates[0], y1 + self.filter_coordinates[1]), (x2 + self.filter_coordinates[0], y2 + self.filter_coordinates[1]), (255, 255, 255), 5)
+
+        rgba = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+        tk_image = self.camera.tk_image(rgba)
         self.videoLabel.photo_image = tk_image
         self.videoLabel.configure(image=tk_image)
         self.videoLabel.after(10, self.cam_loop)
@@ -236,65 +272,27 @@ class ControlPage(tk.Frame):
                 left_controls_frame, text="BAŞLANGIÇ KONUMU", command=initial_position)
         button_initial_position.grid(row=1, column=0, ipadx=30, ipady=20)
 
-        def program_one():
-            # step 1
-            self.controls.move_to(80, 0, 5)
-            time.sleep(0.5)
-            self.controls.gripper_pick()
-            time.sleep(0.5)
-            self.controls.move_to(80, 0, 80)
-            self.controls.move_to(90, 50, 80)
-            time.sleep(0.5)
-            self.controls.move_to(90, 50, 5)
-            time.sleep(0.5)
-            self.controls.gripper_drop()
-            time.sleep(0.5)
-            self.controls.move_to(90, 50, 80)
-            self.controls.move_to(80, 0, 80)
-
-            # step 2
-            self.controls.move_to(80, 0, 5)
-            time.sleep(0.5)
-            self.controls.gripper_pick()
-            time.sleep(0.5)
-            self.controls.move_to(80, 0, 80)
-            self.controls.move_to(90, 50, 80)
-            time.sleep(0.5)
-            self.controls.move_to(90, 50, 30)
-            time.sleep(0.5)
-            self.controls.gripper_drop()
-            time.sleep(0.5)
-            self.controls.move_to(90, 50, 80)
-            self.controls.move_to(80, 0, 80)
-
-            # step 3
-            self.controls.move_to(80, 0, 5)
-            time.sleep(0.5)
-            self.controls.gripper_pick()
-            time.sleep(0.5)
-            self.controls.move_to(80, 0, 80)
-            self.controls.move_to(90, 50, 80)
-            time.sleep(0.5)
-            self.controls.move_to(90, 50, 60)
-            time.sleep(0.5)
-            self.controls.gripper_drop()
-            time.sleep(0.5)
-            self.controls.move_to(90, 50, 90)
-            self.controls.move_to(80, 0, 80)
-
-        button_program_one = tk.Button(
-                left_controls_frame, text="PROGRAM 1", command=program_one)
-        button_program_one.grid(row=2, column=0, ipadx=30, ipady=20)
+        def execute_orders_callback():
+            thread_pool_executor.submit(execute_orders)
 
         def execute_orders():
             orders = load_orders_file()
+            success = True
 
             for order in orders:
-                self.controls.exec_order(order)
+                status, message = self.controls.exec_order(order, self.camera)
+                if status == 'error':
+                    success = False
+                    messagebox.showerror('HATA', message)
+                    break
+
                 time.sleep(0.5)
 
+            if success:
+                messagebox.showinfo('Tamamlandı', 'Görevler başarıyla tamamlandı!')
+
         button_exec_orders = tk.Button(
-                left_controls_frame, text="Görevleri Çalıştır", command=execute_orders)
+                left_controls_frame, text="Görevleri Çalıştır", command=execute_orders_callback)
         button_exec_orders.grid(row=3, column=0, ipadx=30, ipady=20)
 
         return left_controls_frame

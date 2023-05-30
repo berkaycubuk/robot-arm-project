@@ -4,6 +4,7 @@ from PCA9685 import PCA9685
 from robo_arm.servo import Servo
 import math
 from robo_arm.utils import load_blocks_file, write_blocks_file, find_block
+from tkinter import messagebox
 
 # load config file
 with open(r'/home/jnuu/robot-arm/config.yaml') as file:
@@ -54,15 +55,32 @@ class Controls():
         self.gripper_drop()
         self.move_to(int(order['to_x']), int(order['to_y']), 80)
 
-    def exec_order(self, order):
+    def exec_order(self, order, camera):
         blocks = load_blocks_file()
+        response_status = 'success'
+        response_message = ''
+
         if order['action'] == "pick":
             block = find_block(blocks, order['block']) 
-            # TODO: kamera ile renk kontrolü
             if block is None:
-                print("blok bulunamadı")
-                return
-            self.order_pick(block)
+                response_status = 'error'
+                response_message = 'blok bulunamadı'
+                return (response_status, response_message)
+
+            detected_colors = camera.detected_colors()
+
+            color_is_available = False
+            for color in detected_colors:
+                if color == block['color']:
+                    color_is_available = True
+                    break
+
+            if color_is_available:
+                self.order_pick(block)
+            else:
+                response_status = 'error'
+                response_message = block['color'] + ' renk bulunamadı'
+
         elif order['action'] == "drop":
             self.order_drop(order)
 
@@ -73,6 +91,8 @@ class Controls():
                     blocks[key]['level'] = order['to_level']
 
             write_blocks_file(blocks)
+
+        return (response_status, response_message)
 
     def set_angles(self, base, left, right):
         self.left_servo.setAngle(left, True)

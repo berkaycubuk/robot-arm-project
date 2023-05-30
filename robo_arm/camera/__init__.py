@@ -22,8 +22,9 @@ class Camera:
         from_array_image = Image.fromarray(array)
         return ImageTk.PhotoImage(image=from_array_image)
 
-    def detected_colors_in_frame(self, frame):
+    def detected_colors(self):
         found_colors = []
+        frame = self.read()
 
         # red
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -31,7 +32,11 @@ class Camera:
         image = Image.fromarray(mask)
         bbox = image.getbbox()
         if bbox is not None:
-            found_colors.append('red')
+            x1, y1, x2, y2 = bbox
+            length = abs(x2 - x1)
+            height = abs(y2 - y1)
+            if length >= 40 and height >= 40:
+                found_colors.append('Kırmızı')
 
         # white
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -39,7 +44,11 @@ class Camera:
         image = Image.fromarray(mask)
         bbox = image.getbbox()
         if bbox is not None:
-            found_colors.append('white')
+            x1, y1, x2, y2 = bbox
+            length = abs(x2 - x1)
+            height = abs(y2 - y1)
+            if length >= 40 and height >= 40:
+                found_colors.append('Beyaz')
 
         return found_colors
 
